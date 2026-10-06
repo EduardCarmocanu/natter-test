@@ -1,4 +1,5 @@
 import type { Page } from 'playwright';
+import { noProgress, type ProgressListener } from './progress.js';
 import type { ProductPage } from './types.js';
 
 /** Side navigation listing the product category pages, at any nesting depth. */
@@ -19,31 +20,42 @@ interface LinkElement {
  *
  * Collects the category pages from the side navigation, then walks every listing
  * page of each category and collects the product page links from its product cards.
+ * Reports every page it visits to `onProgress`.
  */
-export async function discoverProductPages(page: Page, startUrl: string): Promise<ProductPage[]> {
-  const categories = await collectCategoryPages(page, startUrl);
+export async function discoverProductPages(
+  page: Page,
+  startUrl: string,
+  onProgress: ProgressListener = noProgress,
+): Promise<ProductPage[]> {
+  const visit = (url: string) => {
+    onProgress({ type: 'page', stage: 'discovery', url });
+    return page.goto(url);
+  };
+  const categories = await collectCategoryPages(page, startUrl, visit);
   const productUrls = new Set<string>();
 
   for (const category of categories) {
-    await page.goto(category);
+    await visit(category);
     for (const listingUrl of await listingPageUrls(page, category)) {
-      if (listingUrl !== category) await page.goto(listingUrl);
+      if (listingUrl !== category) await visit(listingUrl);
       for (const productUrl of await collectProductLinks(page, listingUrl)) {
         productUrls.add(productUrl);
       }
     }
   }
 
-  const links = [...productUrls];
-  console.dir(links, { maxArrayLength: null });
-  return links.map((url) => ({ url }));
+  return [...productUrls].map((url) => ({ url }));
 }
 
 /**
  * Crawls the side navigation breadth-first: visiting a category page reveals its
  * nested subcategory links, which are queued in turn. Each URL is visited once.
  */
-async function collectCategoryPages(page: Page, startUrl: string): Promise<string[]> {
+async function collectCategoryPages(
+  page: Page,
+  startUrl: string,
+  visit: (url: string) => Promise<unknown>,
+): Promise<string[]> {
   const origin = new URL(startUrl).origin;
   const toVisit = [normalizeUrl(startUrl)];
   const visited = new Set<string>();
@@ -53,7 +65,7 @@ async function collectCategoryPages(page: Page, startUrl: string): Promise<strin
     if (visited.has(url)) continue;
     visited.add(url);
 
-    await page.goto(url);
+    await visit(url);
     const hrefs = await page.$$eval(MENU_LINK_SELECTOR, (links: LinkElement[]) =>
       links.map((link) => link.getAttribute('href') ?? ''),
     );
@@ -66,9 +78,7 @@ async function collectCategoryPages(page: Page, startUrl: string): Promise<strin
     }
   }
 
-  const links = [...visited];
-  console.log(links);
-  return links;
+  return [...visited];
 }
 
 /**

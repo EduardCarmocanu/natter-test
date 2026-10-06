@@ -14,5 +14,6 @@ export interface Product {
 /** The final result returned by the pipeline. */
 export interface PipelineResult {
   result: Product[];
-  total: number
+  /** Sum of the prices of all products in `result`. */
+  total: number;
 }

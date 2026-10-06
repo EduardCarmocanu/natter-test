@@ -1,5 +1,6 @@
 import type { Page } from 'playwright';
 import { describe, expect, it, vi } from 'vitest';
+import type { ProgressListener } from '../src/pipeline/progress.js';
 import { discoverProductPages } from '../src/pipeline/discovery.js';
 
 const BASE = 'https://example.com/shop';
@@ -67,8 +68,6 @@ function fakePage(site: Record<string, FakePageContent>) {
 
 describe('discoverProductPages', () => {
   it('walks every listing page of each category and collects unique product links', async () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'dir').mockImplementation(() => {});
     const { page, goto } = fakePage(SITE);
 
     const pages = await discoverProductPages(page, BASE);
@@ -90,5 +89,16 @@ describe('discoverProductPages', () => {
       `${BASE}/computers/laptops?page=4`,
       `${BASE}/computers/laptops?page=5`,
     ]);
+  });
+
+  it('reports every visited page before visiting it', async () => {
+    const { page, goto } = fakePage(SITE);
+    const onProgress = vi.fn<ProgressListener>();
+
+    await discoverProductPages(page, BASE, onProgress);
+
+    expect(onProgress.mock.calls.map(([event]) => event)).toEqual(
+      goto.mock.calls.map(([url]) => ({ type: 'page', stage: 'discovery', url })),
+    );
   });
 });
