@@ -5,11 +5,14 @@ export interface ProductPage {
 
 /** Product information extracted from a product page. */
 export interface Product {
-  url: string;
-  // TODO: add product fields once extraction is designed
+  name: string;
+  description: string;
+  price: number;
+  colors?: string[];
 }
 
 /** The final result returned by the pipeline. */
 export interface PipelineResult {
-  products: Product[];
+  result: Product[];
+  total: number
 }

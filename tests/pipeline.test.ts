@@ -1,10 +1,16 @@
 import type { Page } from 'playwright';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runPipeline } from '../src/pipeline/pipeline.js';
 
 describe('runPipeline', () => {
   it('chains discovery, extraction and output', async () => {
-    const result = await runPipeline({} as Page, 'https://example.com');
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const page = {
+      goto: () => Promise.resolve(null),
+      $$eval: () => Promise.resolve([]),
+    } as unknown as Page;
+
+    const result = await runPipeline(page, 'https://example.com');
 
     expect(result).toEqual({ products: [] });
   });
