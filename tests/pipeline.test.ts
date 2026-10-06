@@ -5,6 +5,7 @@ import { runPipeline } from '../src/pipeline/pipeline.js';
 describe('runPipeline', () => {
   it('chains discovery, extraction and output', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'dir').mockImplementation(() => {});
     const page = {
       goto: () => Promise.resolve(null),
       $$eval: () => Promise.resolve([]),
